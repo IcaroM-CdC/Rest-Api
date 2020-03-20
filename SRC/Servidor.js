@@ -7,7 +7,7 @@ const RotaPedidos = require("./Rotas/Pedidos")
 
 const APP = Express()
 
-//Estudar sobre CORS que ainda não fiz na API
+//Estudar sobre CORS que ainda não fiz
 
 APP.use(BodyParser.urlencoded({ extended: false }))
 APP.use(BodyParser.json()) //SO VAI ACEITAR DADOS JSON COMO ENTRADA NO BODY

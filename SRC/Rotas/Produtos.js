@@ -22,19 +22,43 @@ Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
 
 Router.post("/", function(Requisicao, Resposta, Next){
 
-    const Produto = {
+    // COMANDO MYSQL PARA INTRODUZIR O PRODUTO NO BANCO DE DADOS
+    MySQL.getConnection(function(Erro, Conexao) {
 
-        Nome: Requisicao.body.Nome,
-        Preco: Requisicao.body.Preco
 
-    }
-    Resposta.status(201).send({
+        console.error(Erro)
+        
+        if (Erro == null) {
+            console.log("DEU CERTO")
+        }
+        else{
+            console.error("FUDEU")
+        }
+        Conexao.query(
 
-        Mensagem: "Usando o POST dentro da rota de produtos",
-        ProdutoCriado: Produto
+            "INSERT INTO Produtos (Nome, Preco) VALUES (?,?)",
+            [Requisicao.body.Nome, Requisicao.body.Preco],
+            
+            //CALLBACK PARA ENCERRAR A CONEXÃO DEPOIS DO TERMINO DA REQUISIÇÃO
+            function(Erro, Resultado, Field){
+                Conexao.release()
 
+                if (Erro) {
+                    return Resposta.status(500).send({
+                        Erro: Erro,
+                        Response: null
+                    })
+                }
+                
+                Resposta.status(201).send({
+                    Mensagem: "Produto criado com sucesso!!",
+                    ID_Produto: Resultado.insertId
+                })
+            }
+        )
     })
 })
+
 
 Router.patch("/:ID_Produto", function(Requisicao, Resposta, Next){
 

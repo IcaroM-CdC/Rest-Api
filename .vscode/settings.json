@@ -1,0 +1,13 @@
+{
+    "sqltools.connections": [
+        {
+            "database": "Ecommerce",
+            "dialect": "MySQL",
+            "name": "Conexão Principal",
+            "password": "Password",
+            "port": 3306,
+            "server": "localhost",
+            "username": "root"
+        }
+    ]
+}
