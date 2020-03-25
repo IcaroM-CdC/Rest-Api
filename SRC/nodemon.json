@@ -1,11 +1,13 @@
 {
     "env": {
 
-    "MYSQL_USER" : "Icaro",
-    "MYSQL_PASSWORD" : "IcaroMoreira",
-    "MYSQL_DATABASE" : "Ecommerce",
-    "MYSQL_HOST" : "localhost",
-    "MYSQL_PORT" : 3306
+        "MYSQL_USER" : "Icaro",
+        "MYSQL_PASSWORD" : "IcaroMoreira",
+        "MYSQL_DATABASE" : "Ecommerce",
+        "MYSQL_HOST" : "localhost",
+        "MYSQL_PORT" : 3306,
 
+
+        "JWT_KEY": "Segredo" 
     }
 }

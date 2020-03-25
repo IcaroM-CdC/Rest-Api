@@ -1,10 +1,51 @@
 const Express = require("express")
 const MySQL = require("../MySQL").Pool
 const Router = Express.Router()
+const Multer = require("multer")
+const Login = require("../Middleware/Login")
+
+// TRATANDO O ARMAZENAMENTO DE IMAGENS
+
+const Storage = Multer.diskStorage({
+
+    destination: function(Requisicao, Arquivo, Callback){
+        
+        Callback(null, "./uploads/")
+    
+    },
+    
+    filename: function(Requisicao, Arquivo, Callback){
+    
+        Callback(null, Arquivo.originalname)
+    
+    }
+})
+
+const Filefilter = function(Requisicao, Arquivo, Callback){
+    
+    // DEFININDO OS TIPOS DE IMAGEM SUPORTADOS
+    if (Arquivo.mimetype === "image/jpeg" || Arquivo.mimetype === "image/png"){
+
+        Callback(null, true)
+
+    } else {
+
+        Callback(null, false)
+
+    }
+}
+
+const Upload = Multer({
+    storage: Storage,
+    limits:{
+        fileSize: 1024 * 1024 * 10 // LIMITANDO A IMAGEM A 10 MB
+    },
+    fileFilter: Filefilter
+})
 
 // ADICIONA UM NOVO PRODUTO
 
-Router.post("/", function(Requisicao, Resposta, Next){
+Router.post("/", Login.Obrigatorio, Upload.single("Imagem_Produto"), function(Requisicao, Resposta, Next){
 
     // COMANDO MYSQL PARA INTRODUZIR O PRODUTO NO BANCO DE DADOS
     MySQL.getConnection(function(Erro, Conexao) {
@@ -13,8 +54,8 @@ Router.post("/", function(Requisicao, Resposta, Next){
         
         Conexao.query(
 
-            "INSERT INTO Produtos (Nome, Preco) VALUES (?,?)",
-            [Requisicao.body.Nome, Requisicao.body.Preco],
+            "INSERT INTO Produtos (Nome, Preco, Imagem_Produto) VALUES (?,?,?)",
+            [Requisicao.body.Nome, Requisicao.body.Preco, Requisicao.file.path],
             
             //CALLBACK PARA ENCERRAR A CONEXÃO DEPOIS DO TERMINO DA REQUISIÇÃO
             function(Erro, Resultado, Field){
@@ -27,21 +68,22 @@ Router.post("/", function(Requisicao, Resposta, Next){
                     })
                 }
 
-                const Resposta = {
+                const RespostaCriado = {
                     Mensagem: "Produto criado com sucesso",
                     Produto: {
                         ID_Produto: Resultado.ID_Produto,
                         Nome: Requisicao.body.Nome,
                         Preco: Requisicao.body.Preco,
+                        Imagem_Produto: Requisicao.file.path,
                         Requisicao: {
                             Tipo: "POST",
                             Descricao: "Insere um produto no banco de dados",
-                            URL: "http://localhost:3003/produtos"
+                            URL: "http://localhost:3003/produtos/" + Resultado.ID_Produto
                         }
                     }
                 }
                 
-                return Resposta.status(201).send(Resposta)
+                return Resposta.status(201).send(RespostaCriado)
             }
         )
     })
@@ -49,7 +91,7 @@ Router.post("/", function(Requisicao, Resposta, Next){
 
 //RETORNA TODOS OS PRODUTOS
 
-Router.get("/", function(Requisicao, Resposta, Next){
+Router.get("/", Login.Opcional, function(Requisicao, Resposta, Next){
 
     MySQL.getConnection(function(Erro, Conexao){
 
@@ -60,6 +102,8 @@ Router.get("/", function(Requisicao, Resposta, Next){
             "SELECT * FROM Produtos;",
 
             function(Erro, Resultado, Field){
+                Conexao.release()
+                
                 if (Erro){  return Resposta.status(500).send({error: Erro})  }
                 
                 // DETALHANDO A RESPOSTA
@@ -70,6 +114,7 @@ Router.get("/", function(Requisicao, Resposta, Next){
                             ID_Produto: Prod.ID_Produto,
                             Nome: Prod.Nome,
                             Preco: Prod.Preco,
+                            Imagem_Produto: Prod.Imagem_Produto,
                             Requisicao: {
                                 Tipo: "GET",
                                 Descricao: "Retornando Todos os produtos do banco de dados",
@@ -79,7 +124,7 @@ Router.get("/", function(Requisicao, Resposta, Next){
                     })
                 }
 
-                return Resposta.status(200).send({Resposta})
+                return Resposta.status(200).send(RespostaCriado)
                 
             }
         )
@@ -89,7 +134,7 @@ Router.get("/", function(Requisicao, Resposta, Next){
 
 // RETORNA OS DADOS DE UM PRODUTO
 
-Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
+Router.get("/:ID_Produto", Login.Opcional, function(Requisicao, Resposta, Next){
 
     MySQL.getConnection(function(Erro, Conexao){
 
@@ -101,6 +146,8 @@ Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
             [Requisicao.params.ID_Produto],
 
             function(Erro, Resultado, Field){
+                Conexao.release()
+
                 if (Erro){  return Resposta.status(500).send({error: Erro})  }
 
                 // VERIFICA CASO O ID FORNECIDO SEJA INVALIDO
@@ -110,11 +157,12 @@ Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
                     })
                 }
                 
-                const Resposta = {
+                const RespostaCriado = {
                     Produto: {
                         ID_Produto: Requisicao.body.ID_Produto,
-                        Nome: Requisicao.body.Nome,
-                        Preco: Requisicao.body.Preco,
+                        Nome: Resultado[0].Nome,
+                        Preco: Resultado[0].Preco,
+                        Imagem_Produto: Resultado[0].Imagem_Produto,
                         Requisicao: {
                             Tipo: "GET",
                             Descricao: "Retorna os dados de um produto",
@@ -123,7 +171,7 @@ Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
                     }
                 }
                 
-                return Resposta.status(200).send(Resposta)
+                return Resposta.status(200).send(RespostaCriado)
                 
             }
         )
@@ -134,7 +182,7 @@ Router.get("/:ID_Produto", function(Requisicao, Resposta, Next){
 
 // ATUALIZA UM PRODUTO
 
-Router.patch("/:ID_Produto", function(Requisicao, Resposta, Next){
+Router.patch("/:ID_Produto", Login.Obrigatorio, function(Requisicao, Resposta, Next){
 
     MySQL.getConnection(function(Erro, Conexao) {
 
@@ -156,7 +204,7 @@ Router.patch("/:ID_Produto", function(Requisicao, Resposta, Next){
                     })
                 }
 
-                const Resposta = {
+                const RespostaCriado = {
                     Mensagem: "Produto atualizado com sucesso",
                     Produto: {
                         ID_Produto: Requisicao.body.ID_Produto,
@@ -170,7 +218,7 @@ Router.patch("/:ID_Produto", function(Requisicao, Resposta, Next){
                     }
                 }
                 
-                return Resposta.status(202).send(Resposta)
+                return Resposta.status(202).send(RespostaCriado)
 
             }
         )
@@ -180,7 +228,7 @@ Router.patch("/:ID_Produto", function(Requisicao, Resposta, Next){
 
 // DELETA UM PRODUTO
 
-Router.delete("/:ID_Produto", function(Requisicao, Resposta, Next){
+Router.delete("/:ID_Produto", Login.Obrigatorio, function(Requisicao, Resposta, Next){
 
     MySQL.getConnection(function(Erro, Conexao) {
 
@@ -202,11 +250,11 @@ Router.delete("/:ID_Produto", function(Requisicao, Resposta, Next){
                     })
                 }
 
-                const Resposta = {
+                const RespostaCriado = {
                     Mensagem: "Produto removido com sucesso",
                     Requisicao: {
-                        Tipo: "Delete",
-                        Descricao: "Remove um produto",
+                        Tipo: "POST",
+                        Descricao: "ADICIONA UM PRODUTO",
                         URL: "http://localhost:3003/produtos",
                         Body: {
                             Nome: "String",
@@ -215,7 +263,7 @@ Router.delete("/:ID_Produto", function(Requisicao, Resposta, Next){
                     }
                 }
                 
-                return Resposta.status(202).send(Resposta)
+                return Resposta.status(202).send(RespostaCriado)
             }
         )
     })

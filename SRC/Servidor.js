@@ -4,6 +4,7 @@ const Express = require("express")
 const BodyParser = require("body-parser")
 const RotaProdutos = require("./Rotas/Produtos")
 const RotaPedidos = require("./Rotas/Pedidos")
+const RotaUsuarios = require("./Rotas/Usuarios")
 
 const APP = Express()
 
@@ -13,6 +14,9 @@ APP.use(BodyParser.urlencoded({ extended: false }))
 APP.use(BodyParser.json()) //SO VAI ACEITAR DADOS JSON COMO ENTRADA NO BODY
 APP.use("/produtos", RotaProdutos)
 APP.use("/pedidos", RotaPedidos)
+APP.use("/usuarios", RotaUsuarios)
+
+APP.use("/uploads", Express.static("uploads"))
 
 // TRATANDO O ERRO CASO UMA ROTA NÃO DEFINIDA FOR INFORMADA
 
